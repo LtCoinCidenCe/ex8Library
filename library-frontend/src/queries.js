@@ -9,3 +9,13 @@ query AllAuthors {
   }
 }
 `
+
+export const ALL_BOOKS = gql`
+query AllBooks {
+  allBooks {
+    title
+    published
+    author
+  }
+}
+`
