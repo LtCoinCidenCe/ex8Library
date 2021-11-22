@@ -9,7 +9,10 @@ const Authors = (props) => {
     return null
   if (authorResults.loading)
     return <div>loading...</div>
+
   const authors = authorResults.data.allAuthors
+  // in <EditAuthor/> authors should have length > 0 or else array out of index
+  const showEditor = () => authors.length > 0 ? <EditAuthor authors={authors} /> : null
 
   return (
     <div>
@@ -28,7 +31,7 @@ const Authors = (props) => {
           )}
         </tbody>
       </table>
-      <EditAuthor />
+      {showEditor()}
     </div>
   )
 }

@@ -1,8 +1,10 @@
 import { useMutation } from '@apollo/client'
-import React from 'react'
+import React, { useState } from 'react'
 import { ALL_AUTHORS, EDIT_AUTHOR } from '../queries'
 
-const EditAuthor = () => {
+const EditAuthor = ({ authors }) => {
+  const [selection, setSelection] = useState(authors[0].name)
+  const [born, SBT] = useState('')
   const [editAuthor] = useMutation(EDIT_AUTHOR, {
     refetchQueries: [{ query: ALL_AUTHORS }]
   })
@@ -10,13 +12,10 @@ const EditAuthor = () => {
   const handleAuthorUpdate = (event) => {
     event.preventDefault()
 
-    // uncontrolled style
-    const name = event.target.name.value
-    const setBornTo = Number(event.target.born.value)
+    const name = selection
+    const setBornTo = Number(born)
     editAuthor({ variables: { name, setBornTo } })
-
-    event.target.name.value = ''
-    event.target.born.value = ''
+    SBT('')
   }
 
 
@@ -25,11 +24,13 @@ const EditAuthor = () => {
     <form onSubmit={handleAuthorUpdate}>
       <div>
         name
-        <input type='text' name='name' />
+        <select value={selection} onChange={(event) => setSelection(event.target.value)}>
+          {authors.map(a => <option key={a.name} value={a.name}>{a.name}</option>)}
+        </select>
       </div>
       <div>
         born
-        <input type='number' name='born' />
+        <input type='number' value={born} onChange={(event) => SBT(event.target.value)} />
       </div>
       <div>
         <button type='submit'>update author</button>
