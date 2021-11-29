@@ -32,11 +32,11 @@ let authors = [
     id: "afa5b6f1-344d-11e9-a414-719c6709cf3e",
     born: 1821
   },
-  { 
+  {
     name: 'Joshua Kerievsky', // birthyear not known
     id: "afa5b6f2-344d-11e9-a414-719c6709cf3e",
   },
-  { 
+  {
     name: 'Sandi Metz', // birthyear not known
     id: "afa5b6f3-344d-11e9-a414-719c6709cf3e",
   },
@@ -69,7 +69,7 @@ let books = [
     author: 'Joshua Kerievsky',
     id: "afa5de01-344d-11e9-a414-719c6709cf3e",
     genres: ['refactoring', 'patterns']
-  },  
+  },
   {
     title: 'Practical Object-Oriented Design, An Agile Primer Using Ruby',
     published: 2012,
@@ -100,11 +100,12 @@ const typeDefs = gql`
     allBooks(author: String, genre: String): [Book!]!
     allAuthors: [Author!]!
   }
+  
   type Mutation {
     addBook(
       title: String!
       published: Int!
-      author: String
+      author: String!
       genres: [String!]!
     ):Book
     
@@ -138,8 +139,9 @@ const resolvers = {
   Query: {
     bookCount: () => Book.collection.countDocuments(),
     authorCount: () => Author.collection.countDocuments(),
+    // not for this task: allBooks 8.14
     allBooks: async (root, args) => {
-      return await Book.find({})
+      return await Book.find({}).populate('author')
     },
     allAuthors: async () => await Author.find({})
   },
@@ -148,16 +150,14 @@ const resolvers = {
       const newBook = new Book({
         title: args.title,
         published: args.published,
-        genres: args.genres
+        genres: args.genres,
+        author: await Author.findOne({ name: args.author })
       })
       await newBook.save()
 
-      // const authorInList = authors.find(au => au.name === args.author)
-      // if (!authorInList)
-      //   authors.push({ name: args.author, id: uuid() })
       return newBook
     },
-    
+
     addAuthor: async (root, args) => {
       const newEntry = new Author({
         name: args.name,
@@ -166,17 +166,15 @@ const resolvers = {
       await newEntry.save()
       return newEntry
     },
-    
-    editAuthor: (_root, args) => {
-      const au=authors.find(i=>i.name===args.name)
-      if(au)
-        au.born=args.setBornTo
+
+    editAuthor: async (root, args) => {
+      const au = await Author.findOneAndUpdate({ name: args.name }, { born: args.setBornTo }, { new: true })
       return au
     }
   },
   Author: {
     // parameter root is the object, args are from query
-    bookCount: (root) => books.filter(b => b.author === root.name).length
+    bookCount: async (root) => (await Book.find({ author: root })).length
   }
 }
 
