@@ -1,4 +1,4 @@
-const { ApolloServer, gql } = require('apollo-server')
+const { ApolloServer, gql, UserInputError } = require('apollo-server')
 const mongoose = require('mongoose')
 require('dotenv').config()
 const { v1: uuid } = require('uuid')
@@ -134,7 +134,8 @@ const typeDefs = gql`
     born: Int
   }
 `
-
+// It seems like mongoose-unique-validator is not required in mongoose version 6 anymore
+// E11000 duplicate key error collection gets caught
 const resolvers = {
   Query: {
     bookCount: () => Book.collection.countDocuments(),
@@ -150,10 +151,16 @@ const resolvers = {
       const newBook = new Book({
         title: args.title,
         published: args.published,
-        genres: args.genres,
-        author: await Author.findOne({ name: args.author })
+        genres: args.genres
       })
-      await newBook.save()
+      try {
+        // orFail throws an exception when author is null
+        newBook.author = await Author.findOne({ name: args.author }).orFail()
+        await newBook.save()
+      }
+      catch (error) {
+        throw new UserInputError(error.message, { invalidArgs: args })
+      }
 
       return newBook
     },
@@ -163,7 +170,12 @@ const resolvers = {
         name: args.name,
         born: args.born
       })
-      await newEntry.save()
+      try {
+        await newEntry.save()
+      }
+      catch (error) {
+        throw new UserInputError(error.message, { invalidArgs: args })
+      }
       return newEntry
     },
 
