@@ -1,5 +1,20 @@
 const { ApolloServer, gql } = require('apollo-server')
+const mongoose = require('mongoose')
+require('dotenv').config()
 const { v1: uuid } = require('uuid')
+const Author = require('./models/Author')
+const Book = require('./models/Book')
+
+const MONGODB_URI = process.env.MONGODB_URI
+console.log('connecting to', MONGODB_URI)
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('connected to MongoDB')
+  })
+  .catch((error) => {
+    console.log('error connection to MongoDB:', error.message)
+  })
+
 
 let authors = [
   {
@@ -26,17 +41,6 @@ let authors = [
     id: "afa5b6f3-344d-11e9-a414-719c6709cf3e",
   },
 ]
-
-/*
- * Suomi:
- * Saattaisi olla järkevämpää assosioida kirja ja sen tekijä tallettamalla kirjan yhteyteen tekijän nimen sijaan tekijän id
- * Yksinkertaisuuden vuoksi tallennamme kuitenkin kirjan yhteyteen tekijän nimen
- *
- * English:
- * It might make more sense to associate a book with its author by storing the author's name in the context of the book instead of the author's id
- * However, for simplicity, we will store the author's name in connection with the book
-*/
-
 let books = [
   {
     title: 'Clean Code',
@@ -100,9 +104,14 @@ const typeDefs = gql`
     addBook(
       title: String!
       published: Int!
-      author: String!
+      author: String
       genres: [String!]!
     ):Book
+    
+    addAuthor(
+      name: String!
+      born: Int
+    ): Author
     
     editAuthor(
       name: String!
@@ -113,8 +122,8 @@ const typeDefs = gql`
   type Book {
     title: String!
     published: Int!
-    author: String!
-    id: String!
+    author: Author!
+    id: ID!
     genres: [String!]!
   }
   type Author {
@@ -127,32 +136,35 @@ const typeDefs = gql`
 
 const resolvers = {
   Query: {
-    bookCount: () => books.length,
-    authorCount: () => authors.length,
-    allBooks: (_root, args) => {
-      let re = books
-      if (args.hasOwnProperty('author'))
-        re = re.filter(b => b.author === args.author)
-      if (args.hasOwnProperty('genre'))
-        re = re.filter(b => b.genres.includes(args.genre))
-      return re
+    bookCount: () => Book.collection.countDocuments(),
+    authorCount: () => Author.collection.countDocuments(),
+    allBooks: async (root, args) => {
+      return await Book.find({})
     },
-    allAuthors: () => authors
+    allAuthors: async () => await Author.find({})
   },
   Mutation: {
-    addBook: (_root, args) => {
-      const newBook = {
+    addBook: async (root, args) => {
+      const newBook = new Book({
         title: args.title,
         published: args.published,
-        author: args.author,
-        id: uuid(),
         genres: args.genres
-      }
-      books.push(newBook)
-      const authorInList = authors.find(au => au.name === args.author)
-      if(!authorInList)
-        authors.push({ name: args.author, id: uuid() })
+      })
+      await newBook.save()
+
+      // const authorInList = authors.find(au => au.name === args.author)
+      // if (!authorInList)
+      //   authors.push({ name: args.author, id: uuid() })
       return newBook
+    },
+    
+    addAuthor: async (root, args) => {
+      const newEntry = new Author({
+        name: args.name,
+        born: args.born
+      })
+      await newEntry.save()
+      return newEntry
     },
     
     editAuthor: (_root, args) => {
