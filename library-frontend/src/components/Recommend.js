@@ -3,29 +3,31 @@ import React, { useEffect, useState } from 'react'
 import { ALL_BOOKS, ME } from '../queries'
 
 const Recommend = ({ show }) => {
-  const [loadBook, bookResults] = useLazyQuery(ALL_BOOKS)
+  const allBookResults = useQuery(ALL_BOOKS, { fetchPolicy: 'cache-only' })
+  const [loadBook, bookResults] = useLazyQuery(ALL_BOOKS, { fetchPolicy: 'network-only' })
   const meResults = useQuery(ME, { fetchPolicy: 'network-only' })
   const [myBooks, setMyBooks] = useState(null)
 
   useEffect(() => {
-    // console.log('bookResults:', bookResults.data)
+    console.log('bookResults:', bookResults.data)
     if (bookResults.data)
       setMyBooks(bookResults.data.allBooks)
   }, [bookResults.data])
   useEffect(() => {
-    // console.log('me:', meResults.data)
+    console.log('me:', meResults.data)
     if (meResults.data)
       loadBook({ variables: { genre: meResults.data.me.favoriteGenre } })
-  }, [meResults.data]) // eslint-disable-line
-
+  }, [meResults.data, allBookResults.data]) // eslint-disable-line
+  // still refetchQueries: [{ query: ALL_BOOKS }, { query: ALL_AUTHORS }] in NewBook.js
+  
   if (!show)
     return null
-  
+
   if (!myBooks)
     return <div>not ready...</div>
-    
+
   const favorite = meResults.data.me.favoriteGenre
-  
+
   return (
     <div>
       <h2>recommendations</h2>
