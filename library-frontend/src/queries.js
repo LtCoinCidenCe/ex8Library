@@ -18,6 +18,7 @@ query AllBooks {
     author {
       name
     }
+    genres
   }
 }
 `
