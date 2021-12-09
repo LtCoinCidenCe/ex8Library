@@ -6,7 +6,7 @@ const Login = (props) => {
   const [loginAct, result] = useMutation(LOGIN, {
     onError: (error) => alert(error.graphQLErrors[0].message)
   })
-  
+
   useEffect(() => {
     if (result.data) {
       const token = result.data.login.value

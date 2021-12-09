@@ -23,6 +23,7 @@ const Books = (props) => {
   return (
     <div>
       <h2>books</h2>
+      {chosenGenre ? <p>in genre <b>{chosenGenre}</b></p> : null}
       <table>
         <tbody>
           <tr>
