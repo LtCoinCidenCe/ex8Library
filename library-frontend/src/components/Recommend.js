@@ -1,21 +1,31 @@
-import { useQuery } from '@apollo/client'
-import React from 'react'
+import { useLazyQuery, useQuery } from '@apollo/client'
+import React, { useEffect, useState } from 'react'
 import { ALL_BOOKS, ME } from '../queries'
 
 const Recommend = ({ show }) => {
-  const bookResults = useQuery(ALL_BOOKS)
+  const [loadBook, bookResults] = useLazyQuery(ALL_BOOKS)
   const meResults = useQuery(ME, { fetchPolicy: 'network-only' })
+  const [myBooks, setMyBooks] = useState(null)
+
+  useEffect(() => {
+    // console.log('bookResults:', bookResults.data)
+    if (bookResults.data)
+      setMyBooks(bookResults.data.allBooks)
+  }, [bookResults.data])
+  useEffect(() => {
+    // console.log('me:', meResults.data)
+    if (meResults.data)
+      loadBook({ variables: { genre: meResults.data.me.favoriteGenre } })
+  }, [meResults.data]) // eslint-disable-line
 
   if (!show)
     return null
-  if (bookResults.loading)
-    return <div>loading...</div>
-  if (meResults.loading)
-    return <div>loading...</div>
-  const books = bookResults.data.allBooks
+  
+  if (!myBooks)
+    return <div>not ready...</div>
+    
   const favorite = meResults.data.me.favoriteGenre
-  const myBooks = books.filter(yksibook => yksibook.genres.includes(favorite))
-
+  
   return (
     <div>
       <h2>recommendations</h2>

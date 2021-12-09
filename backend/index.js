@@ -161,7 +161,7 @@ const resolvers = {
     authorCount: () => Author.collection.countDocuments(),
     // not for this task: allBooks 8.14
     allBooks: async (root, args) => {
-      const re = await Book.find({}).populate('author')
+      let re = await Book.find({}).populate('author')
       if (args.hasOwnProperty('genre'))
         re = re.filter(b => b.genres.includes(args.genre))
       return re

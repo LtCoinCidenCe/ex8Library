@@ -31,7 +31,9 @@ const App = () => {
       <NewBook show={page === 'add'} />
       <Login show={page === 'login'} setToken={setToken} setPage={setPage} />
       {token ? <Recommend show={page === 'recommend'} /> : null}
-      {/* cache for Recommend is just too terrible if it is on all the time */}
+      {/* cache for Recommend is just too terrible if it is on all the time
+          just kill it when necessary
+      */}
     </div>
   )
 }
