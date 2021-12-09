@@ -12,7 +12,7 @@ const Authors = (props) => {
 
   const authors = authorResults.data.allAuthors
   // in <EditAuthor/> authors should have length > 0 or else array out of index
-  const showEditor = () => authors.length > 0 ? <EditAuthor authors={authors} /> : null
+  const showEditor = () => authors.length > 0 && props.token ? <EditAuthor authors={authors} /> : <p>login to edit author's birthdate</p>
 
   return (
     <div>
