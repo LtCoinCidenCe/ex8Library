@@ -141,6 +141,10 @@ const typeDefs = gql`
     ): Token
   }
   
+  type Subscription {
+    bookAdded: Book!
+  }
+  
   type Book {
     title: String!
     published: Int!
@@ -162,6 +166,7 @@ const typeDefs = gql`
   type Token {
     value: String!
   }
+  
 `
 // It seems like mongoose-unique-validator is not required in mongoose version 6 anymore
 // E11000 duplicate key error collection gets caught
@@ -255,7 +260,7 @@ const resolvers = {
   },
   Subscription: {
     bookAdded: {
-      subscribe: ()=> pubsub.asyncIterator()
+      subscribe: ()=> pubsub.asyncIterator(['BOOK_ADDED'])
     }
   }
 }
