@@ -1,10 +1,20 @@
-const { ApolloServer, gql, UserInputError, AuthenticationError } = require('apollo-server')
+const { ApolloServer, gql, UserInputError, AuthenticationError } = require('apollo-server-express')
+const { ApolloServerPluginDrainHttpServer } = require('apollo-server-core')
+const express = require('express')
+const http = require('http')
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 const Author = require('./models/Author')
 const Book = require('./models/Book')
 const User = require('./models/User')
+const { execute, subscribe } = require('graphql')
+const { SubscriptionServer } = require('subscriptions-transport-ws')
+const { makeExecutableSchema } = require('@graphql-tools/schema')
+const { PubSub } = require('graphql-subscriptions')
+
+const pubsub = new PubSub();
+
 
 const MONGODB_URI = process.env.MONGODB_URI
 console.log('connecting to', MONGODB_URI)
@@ -188,6 +198,8 @@ const resolvers = {
         throw new UserInputError(error.message, { invalidArgs: args })
       }
 
+
+      pubsub.publish('BOOK_ADDED', { bookAdded: newBook })
       return newBook
     },
 
@@ -240,24 +252,75 @@ const resolvers = {
   Author: {
     // parameter root is the object, args are from query
     bookCount: async (root) => (await Book.find({ author: root })).length
+  },
+  Subscription: {
+    bookAdded: {
+      subscribe: ()=> pubsub.asyncIterator()
+    }
   }
 }
 
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-  context: async ({ req }) => {
-    const auth = req ? req.headers.authorization : null
-    if (auth && auth.toLowerCase().startsWith('bearer ')) {
-      const decodedToken = jwt.verify(
-        auth.substring(7), process.env.JWT_SECRET
-      )
-      const currentUser = await User.findById(decodedToken.id)
-      return { currentUser }
-    }
-  }
-})
 
-server.listen().then(({ url }) => {
-  console.log(`Server ready at ${url}`)
-})
+// need to extract this authentication to here
+const contextEx = async ({ req }) => {
+  const auth = req ? req.headers.authorization : null
+  if (auth && auth.toLowerCase().startsWith('bearer ')) {
+    const decodedToken = jwt.verify(
+      auth.substring(7), process.env.JWT_SECRET
+    )
+    const currentUser = await User.findById(decodedToken.id)
+    return { currentUser }
+  }
+}
+
+async function startApolloServer(typeDefs, resolvers, context) {
+  // Required logic for integrating with Express
+  const app = express();
+  const httpServer = http.createServer(app);
+
+
+  const schema = makeExecutableSchema({
+    typeDefs,
+    resolvers,
+  });
+
+  const subscriptionServer = SubscriptionServer.create(
+    { schema, execute, subscribe },
+    { server: httpServer, path: '/graphql' }
+  );
+
+
+  // Same ApolloServer initialization as before, plus the drain plugin.
+  const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+    context,
+    plugins: [ApolloServerPluginDrainHttpServer({ httpServer }),
+    {
+      async serverWillStart() {
+        return {
+          async drainServer() {
+            subscriptionServer.close();
+          }
+        };
+      }
+    }]
+  });
+
+  // More required logic for integrating with Express
+  await server.start();
+  server.applyMiddleware({
+    app,
+
+    // By default, apollo-server hosts its GraphQL endpoint at the
+    // server root. However, *other* Apollo Server packages host it at
+    // /graphql. Optionally provide this to match apollo-server.
+    path: '/',
+  });
+
+  // Modified server startup
+  await new Promise(resolve => httpServer.listen({ port: 4000 }, resolve));
+  console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`);
+}
+
+startApolloServer(typeDefs, resolvers, contextEx)
