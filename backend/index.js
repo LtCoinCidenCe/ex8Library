@@ -25,6 +25,7 @@ mongoose.connect(MONGODB_URI)
   .catch((error) => {
     console.log('error connection to MongoDB:', error.message)
   })
+mongoose.set('debug', true)
 
 let authors = [
   {
@@ -181,7 +182,19 @@ const resolvers = {
         re = re.filter(b => b.genres.includes(args.genre))
       return re
     },
-    allAuthors: async () => await Author.find({}),
+    allAuthors: async () => {
+      const kaikki = await Author.find({})
+      const books = await Book.find({ author: { $in: kaikki } })
+      for (let index = 0; index < kaikki.length; index++) {
+        const element = kaikki[index];
+        element.bookCount = 0
+      }
+      for (let index = 0; index < books.length; index++) {
+        const bk = books[index];
+        kaikki.find(au => au._id.toString() === bk.author.toString()).bookCount += 1
+      }
+      return kaikki
+    },
     me: (root, args, context) => context.currentUser
   },
   Mutation: {
@@ -254,13 +267,13 @@ const resolvers = {
       return { value: jwt.sign(userForToken, process.env.JWT_SECRET) }
     }
   },
-  Author: {
-    // parameter root is the object, args are from query
-    bookCount: async (root) => (await Book.find({ author: root })).length
-  },
+  // Author: {
+  //   // parameter root is the object, args are from query
+  //   bookCount: async (root) => (await Book.find({ author: root })).length
+  // },
   Subscription: {
     bookAdded: {
-      subscribe: ()=> pubsub.asyncIterator(['BOOK_ADDED'])
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED'])
     }
   }
 }
